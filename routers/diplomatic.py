@@ -73,3 +73,50 @@ def review_proposal(
     proposal.reviewed_at   = datetime.utcnow()
     db.commit()
     return proposal
+
+@router.get("/approved")
+def get_approved_relations(db: Session = Depends(get_db)):
+    """承認済みの外交データを返す（認証不要・地図表示用）"""
+    proposals = db.query(DiplomaticProposal).filter(
+        DiplomaticProposal.status == "approved"
+    ).all()
+    return [
+        {
+            "id":            p.id,
+            "country_a":     p.country_a,
+            "country_b":     p.country_b,
+            "relation_type": p.relation_type,
+            "summary":       p.summary,
+            "source_url":    p.source_url,
+        }
+        for p in proposals
+    ]
+
+@router.get("/history")
+def get_history(
+    db: Session = Depends(get_db),
+    _:  User    = Depends(get_current_user)
+):
+    """承認・差し戻し済みの提案を履歴として返す"""
+    proposals = db.query(DiplomaticProposal).filter(
+        DiplomaticProposal.status != "pending"
+    ).order_by(DiplomaticProposal.reviewed_at.desc()).all()
+
+    return [
+        {
+            "id":             p.id,
+            "country_a":      p.country_a,
+            "country_b":      p.country_b,
+            "relation_type":  p.relation_type,
+            "summary":        p.summary,
+            "source_url":     p.source_url,
+            "source_note":    p.source_note,
+            "status":         p.status,
+            "review_comment": p.review_comment,
+            "proposed_by":    p.proposed_by,
+            "reviewed_by":    p.reviewed_by,
+            "created_at":     p.created_at.isoformat() if p.created_at else None,
+            "reviewed_at":    p.reviewed_at.isoformat() if p.reviewed_at else None,
+        }
+        for p in proposals
+    ]
