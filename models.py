@@ -46,3 +46,8 @@ class EditHistory(Base):
     after_data  = Column(JSONB)
     comment     = Column(Text)
     changed_at  = Column(DateTime, server_default=func.now())
+
+
+
+
+    
