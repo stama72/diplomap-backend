@@ -82,25 +82,45 @@ summary: （関係性の要約を100文字以内で）
 
 
 def save_relation(country_a, country_b, relation_type, summary, source_url):
-    """分析結果をDBに保存する"""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            INSERT INTO diplomatic_relations
-                (country_a, country_b, relation_type, summary, source_url)
-            VALUES
-                (:a, :b, :rel, :sum, :url)
-        """), {
-            "a":   country_a,
-            "b":   country_b,
-            "rel": relation_type,
-            "sum": summary,
-            "url": source_url,
-        })
-    print(f"  保存完了: {country_a} ↔ {country_b} | {relation_type}")
-    print(f"  要約: {summary}")
+    """
+    分析結果をDBに保存する（UPSERT: country_a, country_b が重複したら更新）
+    """
+    # 常に country_a < country_b の順序に統一（チェック制約に合わせる）
+    if country_a > country_b:
+        country_a, country_b = country_b, country_a
+    
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO diplomatic_relations
+                    (country_a, country_b, relation_type, summary, source_url)
+                VALUES
+                    (:a, :b, :rel, :sum, :url)
+                ON CONFLICT (country_a, country_b)
+                DO UPDATE SET
+                    relation_type = EXCLUDED.relation_type,
+                    summary = EXCLUDED.summary,
+                    source_url = EXCLUDED.source_url,
+                    updated_at = NOW()
+            """), {
+                "a":   country_a,
+                "b":   country_b,
+                "rel": relation_type,
+                "sum": summary,
+                "url": source_url,
+            })
+        print(f"  保存完了: {country_a} ↔ {country_b} | {relation_type}")
+        print(f"  要約: {summary}")
+    except Exception as e:
+        print(f"  保存エラー: {e}")
 
 
 def main():
+    """
+    外務省ページから外交関係データを取得・分析して DB に保存する
+    """
+    print("===== 外交関係データ取り込み開始 =====")
+    
     for target in TARGETS:
         print(f"\n===== {target['country_a']} ↔ {target['country_b']} =====")
 
@@ -129,6 +149,8 @@ def main():
             result["summary"],
             target["url"],
         )
+    
+    print("\n===== 外交関係データ取り込み完了 =====")
 
 
 if __name__ == "__main__":

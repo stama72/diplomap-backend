@@ -9,8 +9,8 @@ from auth import get_current_user, require_role
 router = APIRouter(prefix="/api/diplomatic", tags=["diplomatic"])
 
 class ProposalIn(BaseModel):
-    country_a:     str
-    country_b:     str
+    country_a:     str  # iso_id format
+    country_b:     str  # iso_id format
     relation_type: str
     summary:       str
     source_url:    str
@@ -26,9 +26,13 @@ def list_proposals(
     db:     Session = Depends(get_db),
     _:      User    = Depends(get_current_user)
 ):
+    """
+    提案を一覧取得（ステータスでフィルタ可能）
+    """
     q = db.query(DiplomaticProposal)
     if status:
         q = q.filter(DiplomaticProposal.status == status)
+    
     return q.order_by(DiplomaticProposal.created_at.desc()).all()
 
 @router.post("/")
@@ -37,8 +41,14 @@ def create_proposal(
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_current_user)
 ):
+    """提案を作成する"""
     proposal = DiplomaticProposal(
-        **body.model_dump(),
+        country_a=body.country_a,
+        country_b=body.country_b,
+        relation_type=body.relation_type,
+        summary=body.summary,
+        source_url=body.source_url,
+        source_note=body.source_note,
         proposed_by=current_user.id,
         status="pending"
     )
@@ -56,6 +66,7 @@ def review_proposal(
         require_role("reviewer", "admin")
     )
 ):
+    """提案をレビューする（承認 or 差し戻し）"""
     proposal = db.query(DiplomaticProposal).filter(
         DiplomaticProposal.id == proposal_id
     ).first()
@@ -71,12 +82,26 @@ def review_proposal(
     proposal.reviewed_by   = current_user.id
     proposal.review_comment = body.comment
     proposal.reviewed_at   = datetime.utcnow()
+    
     db.commit()
+    db.refresh(proposal)
+    
+    # 変更履歴を記録
+    history = EditHistory(
+        relation_id=proposal.id,
+        changed_by=current_user.id,
+        before_data={"status": "pending"},
+        after_data={"status": proposal.status},
+        comment=f"Reviewed by {current_user.display_name}: {body.comment}"
+    )
+    db.add(history)
+    db.commit()
+    
     return proposal
 
 @router.get("/approved")
 def get_approved_relations(db: Session = Depends(get_db)):
-    """承認済みの外交データを返す（認証不要・地図表示用）"""
+    """承認済みの外交提案を返す（認証不要・地図表示用）"""
     proposals = db.query(DiplomaticProposal).filter(
         DiplomaticProposal.status == "approved"
     ).all()

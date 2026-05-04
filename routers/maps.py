@@ -55,33 +55,6 @@ def delete_country(
     db.commit()
     return {"message": f"{country_id} を削除しました"}
 
-@router.get("/trade-links")
-def get_trade_links(
-    category: str = None,
-    year:     int  = 2023,
-    db:       Session = Depends(get_db)
-):
-    """
-    取引リンクを取得する
-    - year: 年（デフォルト 2023）
-    - category: カテゴリ（オプション）
-    """
-    query = """
-        SELECT from_country, to_country,
-               value, category, year
-        FROM trade_links
-        WHERE year = :year
-    """
-    params = {"year": year}
-    if category:
-        query += " AND category = :category"
-        params["category"] = category
-    
-    query += " ORDER BY value DESC"
-
-    rows = db.execute(text(query), params)
-    return [dict(row._mapping) for row in rows]
-
 @router.get("/countries")
 def get_countries(db: Session = Depends(get_db)):
     """全国を取得する"""

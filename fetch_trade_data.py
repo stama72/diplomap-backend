@@ -33,7 +33,9 @@ YEARS = [2020, 2021, 2022, 2023, 2024, 2025]
 REQUEST_INTERVAL = 2
 
 def fetch_and_save(reporter_code, partner_code, cmd_code, category, year, retry=3):
-    """1件分のデータをAPIから取得してDBに保存する（リトライあり）"""
+    """
+    1件分のデータをAPIから取得してDBに保存する（リトライあり）
+    """
 
     url = "https://comtradeapi.un.org/data/v1/get/C/A/HS"
     params = {
@@ -85,26 +87,36 @@ def fetch_and_save(reporter_code, partner_code, cmd_code, category, year, retry=
     from_id = REPORTERS[reporter_code]
     to_id   = PARTNERS[partner_code]
 
-    with engine.begin() as conn:
-        conn.execute(text("""
-            INSERT INTO trade_links (from_country, to_country, value, category, year)
-            VALUES (:from_c, :to_c, :value, :category, :year)
-            ON CONFLICT DO NOTHING
-        """), {
-            "from_c":   from_id,
-            "to_c":     to_id,
-            "value":    value_oku,
-            "category": category,
-            "year":     year,
-        })
-
-    print(f"  保存完了: {from_id} → {to_id} | {category} | {year}年 | {value_oku}億円")
+    # UPSERT（既存の場合はスキップ）
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO trade_links (from_country, to_country, value, category, year)
+                VALUES (:from_c, :to_c, :value, :category, :year)
+                ON CONFLICT (from_country, to_country, category, year) DO NOTHING
+            """), {
+                "from_c":   from_id,
+                "to_c":     to_id,
+                "value":    value_oku,
+                "category": category,
+                "year":     year,
+            })
+        print(f"  保存完了: {from_id} → {to_id} | {category} | {year}年 | {value_oku}億円")
+    except Exception as e:
+        print(f"  保存エラー: {e}")
+        return
 
     # 次のリクエストまで待機
     time.sleep(REQUEST_INTERVAL)
 
 
 def main():
+    """
+    全年、全レポーター、全パートナー、全カテゴリ、全商品コードの組み合わせで
+    取引データを取得して DB に保存する
+    """
+    print("===== 取引データ取り込み開始 =====")
+    
     for year in YEARS:
         print(f"\n===== {year}年 =====")
         for r_code in REPORTERS:
@@ -117,6 +129,8 @@ def main():
                     print(f"{r_name} → {p_name} [{category}]")
                     for cmd_code in cmd_codes:
                         fetch_and_save(r_code, p_code, cmd_code, category, year)
+    
+    print("\n===== 取引データ取り込み完了 =====")
 
 
 if __name__ == "__main__":
