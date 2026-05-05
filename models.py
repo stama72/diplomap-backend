@@ -1,5 +1,19 @@
-from sqlalchemy import Column, Integer, Float, String, Text, DateTime, ForeignKey, Boolean, Numeric, Date, CheckConstraint
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 from database import Base
 
@@ -8,224 +22,235 @@ from database import Base
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = {"extend_existing": True}
-    
-    id            = Column(Integer, primary_key=True)
-    name          = Column(String(255), unique=True, nullable=False)
-    email         = Column(String(255), unique=True)
-    display_name  = Column(String(255), nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role          = Column(String(20), default="editor", nullable=False)
-    created_at    = Column(DateTime, server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("role IN ('admin', 'reviewer', 'editor', 'viewer')", name="role_check"),
+    )
 
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), unique=True, nullable=False)
+    display_name = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, server_default=text("'editor'"))
+    email = Column(String(255), unique=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 # ========== Geographic & Political Entities ==========
 
 class Point(Base):
     __tablename__ = "points"
-    __table_args__ = {"extend_existing": True}
-    
-    id         = Column(String(255), primary_key=True)
-    name       = Column(String(255), nullable=False)
-    name_ja    = Column(String(255))
-    lat        = Column(Numeric(10, 6), nullable=False)
-    lng        = Column(Numeric(10, 6), nullable=False)
+    __table_args__ = (
+        Index("idx_points_name", "name"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    name_ja = Column(String(255), nullable=False)
+    lat = Column(Numeric(10, 6), nullable=False)
+    lng = Column(Numeric(10, 6), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class Country(Base):
     __tablename__ = "countries"
-    __table_args__ = {"extend_existing": True}
-    
-    iso_id             = Column(String(16), primary_key=True)
-    name               = Column(String(255), nullable=False)
-    name_ja            = Column(String(255), nullable=False)
-    capital_point_id   = Column(String(255), ForeignKey("points.id"))
-    exist_from         = Column(Date)
-    exist_until        = Column(Date)
-    summary            = Column(Text)
-    summary_jp         = Column(Text)
-    created_at         = Column(DateTime, server_default=func.now())
+    __table_args__ = (
+        Index("idx_countries_name", "name"),
+    )
+
+    iso_id = Column(String(16), primary_key=True)
+    name = Column(String(255), nullable=False)
+    name_ja = Column(String(255), nullable=False)
+    capital_point_id = Column(Integer, ForeignKey("points.id"))
+    exist_from = Column(Date)
+    exist_until = Column(Date)
+    summary = Column(Text)
+    summary_jp = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class InternationalOrg(Base):
     __tablename__ = "international_orgs"
-    __table_args__ = {"extend_existing": True}
-    
-    id                    = Column(String(255), primary_key=True)
-    name                  = Column(String(255), nullable=False)
-    name_ja               = Column(String(255), nullable=False)
-    headquarters_point_id = Column(String(255), ForeignKey("points.id"), nullable=False)
-    exist_from            = Column(Date)
-    exist_until           = Column(Date)
-    summary               = Column(Text)
-    summary_jp            = Column(Text)
-    created_at            = Column(DateTime, server_default=func.now())
+    __table_args__ = (
+        Index("idx_international_orgs_name", "name"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    name_ja = Column(String(255), nullable=False)
+    headquarters_point_id = Column(Integer, ForeignKey("points.id"), nullable=False)
+    exist_from = Column(Date)
+    exist_until = Column(Date)
+    summary = Column(Text)
+    summary_jp = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class MemberCountry(Base):
     __tablename__ = "member_countries"
-    __table_args__ = {"extend_existing": True}
-    
-    id                = Column(Integer, primary_key=True)
-    org_id            = Column(String(255), ForeignKey("international_orgs.id"), nullable=False)
-    country_id        = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    joined_at         = Column(Date)
+    __table_args__ = (
+        UniqueConstraint("org_id", "country_id", "joined_at", name="member_countries_org_id_country_id_joined_at_key"),
+        Index("idx_member_countries_org_id", "org_id"),
+        Index("idx_member_countries_country_id", "country_id"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    org_id = Column(Integer, ForeignKey("international_orgs.id"), nullable=False)
+    country_id = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
+    joined_at = Column(Date)
     belonged_to_until = Column(Date)
-    status            = Column(String(50))
-    status_jp         = Column(String(50))
-    created_at        = Column(DateTime, server_default=func.now())
+    status = Column(String(50))
+    status_jp = Column(String(50))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class MemberOrg(Base):
     __tablename__ = "member_orgs"
-    __table_args__ = {"extend_existing": True}
-    
-    id                = Column(Integer, primary_key=True)
-    greater_org_id    = Column(String(255), ForeignKey("international_orgs.id"), nullable=False)
-    member_org_id     = Column(String(255), ForeignKey("international_orgs.id"), nullable=False)
-    joined_at         = Column(Date)
+    __table_args__ = (
+        CheckConstraint("greater_org_id <> member_org_id", name="no_self_membership"),
+        Index("idx_member_orgs_greater_org_id", "greater_org_id"),
+        Index("idx_member_orgs_member_org_id", "member_org_id"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    greater_org_id = Column(Integer, ForeignKey("international_orgs.id"), nullable=False)
+    member_org_id = Column(Integer, ForeignKey("international_orgs.id"), nullable=False)
+    joined_at = Column(Date)
     belonged_to_until = Column(Date)
-    status            = Column(String(50))
-    status_jp         = Column(String(50))
-    created_at        = Column(DateTime, server_default=func.now())
+    status = Column(String(50))
+    status_jp = Column(String(50))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class LocalOrg(Base):
-    __tablename__ = "local_orgs"
-    __table_args__ = {"extend_existing": True}
-    
-    id                    = Column(String(255), primary_key=True)
-    name_en               = Column(String(255), nullable=False)
-    name_ja               = Column(String(255), nullable=False)
-    headquarters_point_id = Column(String(255), ForeignKey("points.id"))
-    exist_from            = Column(Date)
-    exist_until           = Column(Date)
-    summary               = Column(Text)
-    summary_jp            = Column(Text)
-    created_at            = Column(DateTime, server_default=func.now())
+    __tablename__ = "local_forces"
+    __table_args__ = (
+        Index("idx_local_forces_name", "name"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    name_ja = Column(String(255), nullable=False)
+    headquarters_point_id = Column(Integer, ForeignKey("points.id"))
+    exist_from = Column(Date)
+    exist_until = Column(Date)
+    summary = Column(Text)
+    summary_jp = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
-# ========== Trade ==========
-
-class TradeLink(Base):
-    __tablename__ = "trade_links"
-    __table_args__ = {"extend_existing": True}
-    
-    id           = Column(Integer, primary_key=True)
-    from_country = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    to_country   = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    value        = Column(Numeric(15, 2), nullable=False)
-    category     = Column(String(50), nullable=False)
-    year         = Column(Integer, nullable=False)
-    created_at   = Column(DateTime, server_default=func.now())
-    updated_at   = Column(DateTime, server_default=func.now(), onupdate=func.now())
-
-
-# ========== Diplomatic Relations ==========
-"""
-class DiplomaticRelation(Base):
-    __tablename__ = "diplomatic_relations"
-    __table_args__ = {"extend_existing": True}
-    
-    id            = Column(Integer, primary_key=True)
-    country_a     = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    country_b     = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    relation_type = Column(String(50), nullable=False)
-    summary       = Column(Text, nullable=False)
-    source_url    = Column(Text)
-    created_at    = Column(DateTime, server_default=func.now())
-    updated_at    = Column(DateTime, server_default=func.now(), onupdate=func.now())
-
-
-class DiplomaticProposal(Base):
-    __tablename__ = "diplomatic_proposals"
-    __table_args__ = {"extend_existing": True}
-    
-    id             = Column(Integer, primary_key=True)
-    country_a      = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    country_b      = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    relation_type  = Column(String(50), nullable=False)
-    summary        = Column(Text, nullable=False)
-    source_url     = Column(Text, nullable=False)
-    source_note    = Column(Text)
-    status         = Column(String(20), default="pending", nullable=False)
-    proposed_by    = Column(Integer, ForeignKey("users.id"), nullable=False)
-    reviewed_by    = Column(Integer, ForeignKey("users.id"))
-    review_comment = Column(Text)
-    created_at     = Column(DateTime, server_default=func.now())
-    reviewed_at    = Column(DateTime)
-
-
-class EditHistory(Base):
-    __tablename__ = "edit_history"
-    __table_args__ = {"extend_existing": True}
-    
-    id          = Column(Integer, primary_key=True)
-    relation_id = Column(Integer, ForeignKey("diplomatic_proposals.id"), nullable=False)
-    changed_by  = Column(Integer, ForeignKey("users.id"), nullable=False)
-    before_data = Column(JSONB)
-    after_data  = Column(JSONB)
-    comment     = Column(Text)
-    changed_at  = Column(DateTime, server_default=func.now())
-"""
 
 # ========== Maps & Links ==========
 
 class Map(Base):
     __tablename__ = "maps"
-    __table_args__ = {"extend_existing": True}
-    
-    id                    = Column(String(255), primary_key=True)
-    name                  = Column(String(255), nullable=False)
-    name_ja               = Column(String(255), nullable=False)
-    owner                 = Column(Integer, ForeignKey("users.id"), nullable=False)
-    publishing_permission = Column(String(20), nullable=False)
-    editing_permission    = Column(String(20), nullable=False)
-    exist_from            = Column(Date, nullable=False)
-    exist_until           = Column(Date, nullable=False)
-    time_scale            = Column(String(20), nullable=False)
-    summary               = Column(Text)
-    summary_jp            = Column(Text)
-    source_url            = Column(Text)
-    created_at            = Column(DateTime, server_default=func.now())
-    updated_at            = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    __table_args__ = (
+        CheckConstraint(
+            "read_permission IN ('private', 'shared', 'public') AND edit_permission IN ('private', 'shared', 'public')",
+            name="permission_check",
+        ),
+        CheckConstraint(
+            "time_scale IN ('hundred_years', 'ten_years', 'five_years', 'one_year', 'one_month', 'one_week', 'one_day')",
+            name="time_scale_check",
+        ),
+        Index("idx_maps_owner", "owner"),
+        Index("idx_maps_created_at", "created_at"),
+    )
 
-
-class LinkDesign(Base):
-    __tablename__ = "link_designs"
-    __table_args__ = {"extend_existing": True}
-    
-    link_type  = Column(String(255), primary_key=True)
-    map_id     = Column(String(255), ForeignKey("maps.id"), nullable=False)
-    color      = Column(Integer)
-    animated   = Column(Boolean, default=False)
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    name_ja = Column(String(255), nullable=False)
+    owner = Column(Integer, ForeignKey("users.id"), nullable=False)
+    read_permission = Column(String(20), nullable=False)
+    edit_permission = Column(String(20), nullable=False)
+    exist_from = Column(Date, nullable=False)
+    exist_until = Column(Date, nullable=False)
+    time_scale = Column(String(20), nullable=False)
+    summary = Column(Text)
+    summary_jp = Column(Text)
+    regulations = Column(Text)
+    source_url = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class MapPoint(Base):
+    __tablename__ = "map_points"
+    __table_args__ = (
+        UniqueConstraint("map_id", "point_id", name="map_points_map_id_point_id_key"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    map_id = Column(Integer, ForeignKey("maps.id"), nullable=False)
+    point_id = Column(Integer, ForeignKey("points.id"), nullable=False)
+    color = Column(String(16))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class LinkType(Base):
+    __tablename__ = "link_types"
+    __table_args__ = (
+        Index("idx_link_types_map_id", "map_id"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    map_id = Column(Integer, ForeignKey("maps.id"), nullable=False)
+    color = Column(String(16))
+    animated = Column(Boolean, server_default=text("false"))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    link_type = synonym("name")
 
 
 class Link(Base):
     __tablename__ = "links"
-    __table_args__ = {"extend_existing": True}
-    
-    id           = Column(Integer, primary_key=True)
-    map_id       = Column(String(255), ForeignKey("maps.id"), nullable=False)
-    link_type    = Column(String(255), ForeignKey("link_designs.link_type"), nullable=False)
-    from_country = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    to_country   = Column(String(255), ForeignKey("countries.iso_id"), nullable=False)
-    exist_from   = Column(Date)
-    exist_until  = Column(Date)
-    created_at   = Column(DateTime, server_default=func.now())
-    updated_at   = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    __table_args__ = (
+        UniqueConstraint(
+            "map_id",
+            "link_type",
+            "point_from",
+            "point_to",
+            "exist_from",
+            name="links_map_id_link_type_point_from_point_to_exist_from_key",
+        ),
+        Index("idx_links_map_id", "map_id"),
+        Index("idx_links_point_from", "point_from"),
+        Index("idx_links_point_to", "point_to"),
+        Index("idx_links_link_type", "link_type"),
+    )
 
-
-class LinkDetailsJa(Base):
-    __tablename__ = "link_details_ja"
-    __table_args__ = {"extend_existing": True}
-    
-    id         = Column(Integer, primary_key=True)
-    link_id    = Column(Integer, ForeignKey("links.id"), nullable=False)
-    summary_ja = Column(Text, nullable=False)
+    id = Column(Integer, primary_key=True)
+    map_id = Column(Integer, ForeignKey("maps.id"), nullable=False)
+    link_type = Column(Integer, ForeignKey("link_types.id"), nullable=False)
+    point_from = Column(Integer, ForeignKey("points.id"), nullable=False)
+    point_to = Column(Integer, ForeignKey("points.id"), nullable=False)
+    exist_from = Column(Date, nullable=False)
+    exist_until = Column(Date, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    from_country = synonym("point_from")
+    to_country = synonym("point_to")
+
+
+class LinkDetails(Base):
+    __tablename__ = "link_details"
+
+    link_id = Column(Integer, ForeignKey("links.id", ondelete="CASCADE"), primary_key=True)
+    summary = Column(Text, nullable=False)
+    summary_ja = Column(Text, nullable=False)
+    source_url = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+LinkDetailsJa = LinkDetails
 
 
 

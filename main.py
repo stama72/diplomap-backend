@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from auth import hash_password, verify_password, create_access_token
-from routers import trade, diplomatic
+from routers import countries, links, maps, points
 
 app = FastAPI()
 
@@ -16,8 +16,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(trade.router)
-app.include_router(diplomatic.router)
+app.include_router(maps.router)
+app.include_router(countries.router)
+app.include_router(points.router)
+app.include_router(links.router)
 
 class RegisterIn(BaseModel):
     email:        str

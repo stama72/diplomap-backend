@@ -5,9 +5,19 @@ Validates that ORM models match the DDL schema structure.
 """
 
 from models import (
-    User, Point, Country, InternationalOrg, MemberCountry, MemberOrg, LocalOrg,
-    TradeLink, DiplomaticRelation, DiplomaticProposal, EditHistory,
-    Map, LinkDesign, Link, LinkDetailsJa, Base
+    User,
+    Point,
+    Country,
+    InternationalOrg,
+    MemberCountry,
+    MemberOrg,
+    LocalOrg,
+    Map,
+    MapPoint,
+    LinkType,
+    Link,
+    LinkDetails,
+    Base,
 )
 
 def validate_models():
@@ -15,8 +25,7 @@ def validate_models():
     
     models_to_check = [
         User, Point, Country, InternationalOrg, MemberCountry, MemberOrg, LocalOrg,
-        TradeLink, DiplomaticRelation, DiplomaticProposal, EditHistory,
-        Map, LinkDesign, Link, LinkDetailsJa
+        Map, MapPoint, LinkType, Link, LinkDetails
     ]
     
     print("=" * 60)
@@ -46,13 +55,13 @@ def validate_models():
         
         pk_name = pk_col if pk_col else "COMPOSITE"
         
-        print(f"\n✓ {model.__name__:20} → {table_name:25}")
+        print(f"\nOK {model.__name__:20} -> {table_name:25}")
         print(f"  Columns: {col_count:3} | Primary Key: {pk_name:15}")
         
         # Display primary key info
         for col in columns:
             if col.primary_key:
-                print(f"    └─ PK: {col.name} ({col.type})")
+                print(f"    PK: {col.name} ({col.type})")
     
     print("\n" + "=" * 60)
     print(f"Summary: {total_models} models, {total_columns} columns defined")
@@ -64,16 +73,22 @@ def validate_models():
     # Check Country model
     country_model = Country
     if country_model.__table__.columns['iso_id'].primary_key:
-        print("✓ Country.iso_id is primary key")
+        print("OK Country.iso_id is primary key")
     else:
-        print("✗ Country.iso_id should be primary key")
+        print("NG Country.iso_id should be primary key")
+
+    # Check LinkDetails model
+    if LinkDetails.__table__.columns['link_id'].primary_key:
+        print("OK LinkDetails.link_id is primary key")
+    else:
+        print("NG LinkDetails.link_id should be primary key")
     
     # Check Numeric types for coordinates
     point_lat_type = str(Point.__table__.columns['lat'].type)
     if 'NUMERIC' in point_lat_type or 'Numeric' in point_lat_type:
-        print(f"✓ Point.lat is NUMERIC type: {point_lat_type}")
+        print(f"OK Point.lat is NUMERIC type: {point_lat_type}")
     else:
-        print(f"✗ Point.lat should be NUMERIC, got: {point_lat_type}")
+        print(f"NG Point.lat should be NUMERIC, got: {point_lat_type}")
     
     # Check foreign keys
     fk_count = 0
@@ -82,7 +97,7 @@ def validate_models():
             if col.foreign_keys:
                 fk_count += 1
     
-    print(f"✓ Total foreign key columns defined: {fk_count}")
+    print(f"OK Total foreign key columns defined: {fk_count}")
     
     # Check indexes
     index_count = 0
@@ -90,9 +105,9 @@ def validate_models():
         for idx in model.__table__.indexes:
             index_count += 1
     
-    print(f"✓ Total indexes defined: {index_count}")
+    print(f"OK Total indexes defined: {index_count}")
     
-    print("\n✓ All models validated successfully!")
+    print("\nOK All models validated successfully!")
     return True
 
 if __name__ == "__main__":
