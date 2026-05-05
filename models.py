@@ -158,8 +158,7 @@ class Map(Base):
             "time_scale IN ('hundred_years', 'ten_years', 'five_years', 'one_year', 'one_month', 'one_week', 'one_day')",
             name="time_scale_check",
         ),
-        Index("idx_maps_owner", "owner"),
-        Index("idx_maps_created_at", "created_at"),
+        Index("idx_maps_owner", "owner")
     )
 
     id = Column(Integer, primary_key=True)

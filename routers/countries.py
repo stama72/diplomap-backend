@@ -62,14 +62,8 @@ def update_country(
         raise HTTPException(status_code=404, detail="国が見つかりません")
     
     # 首都ポイントの更新
-    point = db.query(Point).filter(Point.id == country.capital_point_id).first()
-    if point:
-        point.name = body.name
-        point.name_ja = body.name_ja
-        point.lat = body.lat
-        point.lng = body.lng
-        db.add(point)
-    
+    points.update_point_name(country.capital_point_id, body.name, body.name_ja, db, current_user)
+    points.update_point_coordinates(country.capital_point_id, body.lat, body.lng, db, current_user)    
     # 国の情報を更新
     country.name = body.name
     country.name_ja = body.name_ja
@@ -98,9 +92,26 @@ def delete_country(
     country = db.query(Country).filter(Country.iso_id == country_id).first()
     if not country:
         raise HTTPException(status_code=404, detail="国が見つかりません")
+    points.delete_point(country.capital_point_id, db, current_user)
     db.delete(country)
     db.commit()
-    return {"message": f"{country_id} を削除しました"}
+    return {"message": f"{country.name} を削除しました"}
+
+@router.get("/countries/{country_id}/coordinates")
+def get_coordinates(
+    country_id: str,
+    db: Session = Depends(get_db)
+):
+    country = db.query(Country).filter(Country.iso_id == country_id).first()
+    if not country:
+        raise HTTPException(status_code=404, detail="国が見つかりません")
+    point = db.query(Point).filter(Point.id == country.capital_point_id).first()
+    if not point:
+        raise HTTPException(status_code=404, detail="首都の座標が見つかりません")
+    return {
+        "lat": point.lat,
+        "lng": point.lng
+    }
 
 @router.get("/countries/{country_id}")
 def get_country(
