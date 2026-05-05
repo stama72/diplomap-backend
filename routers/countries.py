@@ -83,6 +83,37 @@ def update_country(
         "exist_until": country.exist_until.isoformat() if country.exist_until else None
     }
 
+@router.patch("/countries/{country_id}/summary")
+def update_summary(
+    country_id:   str,
+    summary:      str,
+    summary_jp:   str,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(require_role("admin")),
+):
+    country = db.query(Country).filter(Country.iso_id == country_id).first()
+    if not country:
+        raise HTTPException(status_code=404, detail="国が見つかりません")
+    
+    # 要約情報を更新
+    country.summary = summary
+    country.summary_jp = summary_jp
+
+    db.add(country)
+    db.commit()
+    db.refresh(country)
+
+    return {
+        "iso_id": country.iso_id,
+        "name": country.name,
+        "name_ja": country.name_ja,
+        "capital_point_id": country.capital_point_id,
+        "exist_from": country.exist_from.isoformat() if country.exist_from else None,
+        "exist_until": country.exist_until.isoformat() if country.exist_until else None,
+        "summary": country.summary,
+        "summary_jp": country.summary_jp
+    }
+ 
 @router.delete("/countries/{country_id}")
 def delete_country(
     country_id:   str,

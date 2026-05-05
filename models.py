@@ -198,6 +198,7 @@ class LinkType(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
+    name_ja = Column(String(255), nullable=False)
     map_id = Column(Integer, ForeignKey("maps.id"), nullable=False)
     color = Column(String(16))
     animated = Column(Boolean, server_default=text("false"))

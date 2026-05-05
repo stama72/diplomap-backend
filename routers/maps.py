@@ -23,7 +23,9 @@ class MapIn(BaseModel):
     regulations: str
 
 class LinkTypeIn(BaseModel):
-    link_type: str
+    id: int
+    name: str
+    name_ja: str
     map_id: int
     color: str
     animated: bool
@@ -241,7 +243,9 @@ def create_link_type(
     db: Session = Depends(get_db)
 ):
     new_link_type = LinkType(
-        link_type=link_type.link_type,
+        id=link_type.id,
+        name=link_type.name,
+        name_ja=link_type.name_ja,
         map_id=link_type.map_id,
         color=link_type.color,
         animated=link_type.animated
@@ -250,7 +254,9 @@ def create_link_type(
     db.commit()
     db.refresh(new_link_type)
     return {
-        "link_type": new_link_type.link_type,
+        "id": new_link_type.id,
+        "name": new_link_type.name,
+        "name_ja": new_link_type.name_ja,
         "map_id": new_link_type.map_id,
         "color": new_link_type.color,
         "animated": new_link_type.animated
@@ -262,17 +268,21 @@ def update_link_type(
     db: Session = Depends(get_db)
 ):
     existing = db.query(LinkType).filter(
-        LinkType.link_type == link_type.link_type,
+        LinkType.id == link_type.id,
         LinkType.map_id == link_type.map_id
     ).first()
     if not existing:
         raise HTTPException(status_code=404, detail="リンクタイプが見つかりません")
     existing.color = link_type.color
     existing.animated = link_type.animated
+    existing.name = link_type.name
+    existing.name_ja = link_type.name_ja
     db.commit()
     db.refresh(existing)
     return {
-        "link_type": existing.link_type,
+        "id": existing.id,
+        "name": existing.name,
+        "name_ja": existing.name_ja,
         "map_id": existing.map_id,
         "color": existing.color,
         "animated": existing.animated
@@ -285,7 +295,7 @@ def delete_link_type(
     db: Session = Depends(get_db)
 ):
     existing = db.query(LinkType).filter(
-        LinkType.link_type == link_type.link_type,
+        LinkType.id == link_type.id,
         LinkType.map_id == link_type.map_id
     ).first()
     if not existing:
@@ -302,7 +312,9 @@ def get_link_types(
     link_types = db.query(LinkType).filter(LinkType.map_id == map_id).all()
     return [
         {
-            "link_type": lt.link_type,
+            "id": lt.id,
+            "name": lt.name,
+            "name_ja": lt.name_ja,
             "map_id": lt.map_id,
             "color": lt.color,
             "animated": lt.animated
