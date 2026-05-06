@@ -34,9 +34,9 @@ def add_country(
         iso_id=body.iso_id,
         name=body.name,
         name_ja=body.name_ja,
-        capital_point_id=point.id,
-        exist_from=body.exist_from,
-        exist_until=body.exist_until
+        capital_point_id=point["id"],
+        exist_from=body.exist_from if body.exist_from else datetime(1900, 1, 1),
+        exist_until=body.exist_until if body.exist_until else datetime(9999, 12, 31)
     )
     db.add(country)
     db.commit()
@@ -123,9 +123,9 @@ def delete_country(
     country = db.query(Country).filter(Country.iso_id == country_id).first()
     if not country:
         raise HTTPException(status_code=404, detail="国が見つかりません")
-    points.delete_point(country.capital_point_id, db, current_user)
     db.delete(country)
     db.commit()
+    points.delete_point(country.capital_point_id, db, current_user)
     return {"message": f"{country.name} を削除しました"}
 
 @router.get("/countries/{country_id}/coordinates")

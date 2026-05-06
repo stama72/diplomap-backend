@@ -26,7 +26,7 @@ def add_map_point(
     point = points.add_point(body=body, db=db, current_user=user)
     map_point = MapPoint(
         map_id=map_id,
-        point_id=point.id,
+        point_id=point[id],
         color=color
     )
     db.add(map_point)
@@ -59,10 +59,10 @@ def update_color(
     db.commit()
     db.refresh(map_point)
     return {
-        "id": map_point.id,
-        "map_id": map_point.map_id,
-        "point_id": map_point.point_id,
-        "color": map_point.color,
+        "id": map_point["id"],
+        "map_id": map_point["map_id"],
+        "point_id": map_point["point_id"],
+        "color": map_point["color"],
     }
 
 @router.patch("/maps/{map_id}/map_points/{map_point_id}/name")
@@ -82,10 +82,10 @@ def update_name(
         raise HTTPException(status_code=404, detail="地点が見つかりません")
     points.update_name(point_id=map_point.point_id, name=name, name_ja=name_ja, db=db, current_user=user)
     return {
-        "id": map_point.id,
-        "map_id": map_point.map_id,
-        "point_id": map_point.point_id,
-        "color": map_point.color,
+        "id": map_point["id"],
+        "map_id": map_point["map_id"],
+        "point_id": map_point["point_id"],
+        "color": map_point["color"],
     }
 
 @router.patch("/maps/{map_id}/map_points/{map_point_id}/coordinates")
@@ -105,10 +105,10 @@ def update_coordinates(
         raise HTTPException(status_code=404, detail="地点が見つかりません")
     points.update_coordinates(point_id=map_point.point_id, lat=lat, lng=lng, db=db, current_user=user)
     return {
-        "id": map_point.id,
-        "map_id": map_point.map_id,
-        "point_id": map_point.point_id,
-        "color": map_point.color,
+        "id": map_point["id"],
+        "map_id": map_point["map_id"],
+        "point_id": map_point["point_id"],
+        "color": map_point["color"],
     }
 
 @router.delete("/maps/{map_id}/map_points/{map_point_id}")
@@ -123,10 +123,10 @@ def delete_map_point(
         raise HTTPException(status_code=404, detail="地点が見つかりません")
     if not maps.can_edit_map(map_id, user, db):
         raise HTTPException(status_code=403, detail="このマップを編集する権限がありません")
-    point = db.query(Point).filter(Point.id == map_point.point_id).first()
+    point = db.query(Point).filter(Point.id == map_point["point_id"]).first()
     name = point.name if point else "不明な地点" 
  
-    points.delete_point(map_point.point_id, db, user)
+    points.delete_point(map_point["point_id"], db, user)
     db.delete(map_point)
     db.commit()
     return {"message": f"マップ地点 {name} を削除しました"}

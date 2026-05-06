@@ -1,15 +1,16 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
 from auth import get_current_user, require_role
-from models import Link, LinkType, Map, MapPoint, User, Country
+from models import Link, LinkType, Map, MapPoint, Point, User, Country
+from routers.points import PointIn, add_point
 
 
 class MapIn(BaseModel):
-    id: int
     name: str
     name_ja: str
     owner_id: int
@@ -23,7 +24,6 @@ class MapIn(BaseModel):
     regulations: str
 
 class LinkTypeIn(BaseModel):
-    id: int
     name: str
     name_ja: str
     map_id: int
@@ -66,11 +66,7 @@ def create_map(
     map: MapIn,
     db: Session = Depends(get_db)
 ):
-    existing = db.query(Map).filter(Map.id == map.id).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="すでに登録済みのIDです")
     new_map = Map(
-        id=map.id,
         name=map.name,
         name_ja=map.name_ja,
         owner=map.owner_id,
@@ -200,6 +196,33 @@ def get_maps(
         for m in maps
     ]
 
+
+@router.post("/maps/{map_id}/map_points")
+def create_map_point(
+    map_id: int,
+    color: str,
+    PointIn: PointIn,
+    db: Session = Depends(get_db)
+):
+    point = add_point(
+        body=PointIn,
+        db=db
+    )
+    new_map_point = MapPoint(
+        map_id=map_id,
+        point_id=point["id"],
+        color=color
+    )
+    db.add(new_map_point)
+    db.commit()
+    db.refresh(new_map_point)
+    return {
+        "id": new_map_point.id,
+        "map_id": new_map_point.map_id,
+        "point_id": new_map_point.point_id,
+        "color": new_map_point.color
+    }
+
 @router.patch("/maps/{map_id}/map_points/{map_point_id}")
 def update_map_point(
     map_id: int,
@@ -207,7 +230,7 @@ def update_map_point(
     color: str,
     db: Session = Depends(get_db)
 ):
-    map_point = db.query(MapPoint).filter(MapPoint.id == map_point_id).first()
+    map_point = db.query(MapPoint).filter(MapPoint.id == map_point_id, MapPoint.map_id == map_id).first()
     if not map_point:
         raise HTTPException(status_code=404, detail="マップポイントが見つかりません")
     map_point.color = color
@@ -243,7 +266,6 @@ def create_link_type(
     db: Session = Depends(get_db)
 ):
     new_link_type = LinkType(
-        id=link_type.id,
         name=link_type.name,
         name_ja=link_type.name_ja,
         map_id=link_type.map_id,
@@ -264,12 +286,14 @@ def create_link_type(
 
 @router.put("/link_types")
 def update_link_type(
+    link_type_id: int,
+    map_id: int,
     link_type: LinkTypeIn,
     db: Session = Depends(get_db)
 ):
     existing = db.query(LinkType).filter(
-        LinkType.id == link_type.id,
-        LinkType.map_id == link_type.map_id
+        LinkType.id == link_type_id,
+        LinkType.map_id == map_id
     ).first()
     if not existing:
         raise HTTPException(status_code=404, detail="リンクタイプが見つかりません")
@@ -291,12 +315,13 @@ def update_link_type(
 
 @router.delete("/link_types")
 def delete_link_type(
-    link_type: LinkTypeIn,
+    link_type_id: int,
+    map_id: int,
     db: Session = Depends(get_db)
 ):
     existing = db.query(LinkType).filter(
-        LinkType.id == link_type.id,
-        LinkType.map_id == link_type.map_id
+        LinkType.id == link_type_id,
+        LinkType.map_id == map_id
     ).first()
     if not existing:
         raise HTTPException(status_code=404, detail="リンクタイプが見つかりません")

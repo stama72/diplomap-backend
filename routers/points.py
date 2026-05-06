@@ -10,7 +10,6 @@ from models import Point, User
 
 
 class PointIn(BaseModel):
-    id: Optional[int] = None
     name: str
     name_ja: str
     lat: float
@@ -23,20 +22,13 @@ def add_point(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("editor")),
 ):
-    if body.id is not None:
-        existing = db.query(Point).filter(Point.id == body.id).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="すでに登録済みの地点IDです")
-
     point = Point(
         name=body.name,
         name_ja=body.name_ja,
         lat=body.lat,
         lng=body.lng,
     )
-    if body.id is not None:
-        point.id = body.id
-
+    
     db.add(point)
     db.commit()
     db.refresh(point)
