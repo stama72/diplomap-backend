@@ -263,8 +263,12 @@ def get_map_points(
 @router.post("/link_types")
 def create_link_type(
     link_type: LinkTypeIn,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if not can_edit_map(link_type.map_id, current_user, db):
+        raise HTTPException(status_code=403, detail="このマップにリンクタイプを追加する権限がありません")
+
     new_link_type = LinkType(
         name=link_type.name,
         name_ja=link_type.name_ja,
@@ -289,8 +293,12 @@ def update_link_type(
     link_type_id: int,
     map_id: int,
     link_type: LinkTypeIn,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if not can_edit_map(map_id, current_user, db):
+        raise HTTPException(status_code=403, detail="このマップのリンクタイプを更新する権限がありません")
+
     existing = db.query(LinkType).filter(
         LinkType.id == link_type_id,
         LinkType.map_id == map_id
@@ -317,8 +325,12 @@ def update_link_type(
 def delete_link_type(
     link_type_id: int,
     map_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if not can_edit_map(map_id, current_user, db):
+        raise HTTPException(status_code=403, detail="このマップのリンクタイプを削除する権限がありません")
+
     existing = db.query(LinkType).filter(
         LinkType.id == link_type_id,
         LinkType.map_id == map_id
