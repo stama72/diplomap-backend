@@ -20,6 +20,29 @@ class CountryIn(BaseModel):
 
 router = APIRouter(prefix="/api", tags=["countries"])
 
+
+@router.get("/countries/coordinates")
+def get_all_coordinates(db: Session = Depends(get_db)):
+    """Return a mapping of country iso_id to its capital coordinates { lat, lng }.
+
+    Skips countries without a valid capital_point_id or missing point.
+    """
+    rows = (
+        db.query(Country.iso_id, Point.lat, Point.lng)
+        .join(Point, Country.capital_point_id == Point.id)
+        .all()
+    )
+
+    result = {}
+    for iso_id, lat, lng in rows:
+        # SQLAlchemy Numeric is returned as Decimal; convert to float
+        try:
+            result[iso_id] = {"lat": float(lat), "lng": float(lng)}
+        except Exception:
+            result[iso_id] = {"lat": None, "lng": None}
+
+    return result
+
 @router.post("/countries")
 def add_country(
     body:         CountryIn,
@@ -180,3 +203,4 @@ def get_countries(db: Session = Depends(get_db)):
         }
         for c in countries
     ]
+ 
