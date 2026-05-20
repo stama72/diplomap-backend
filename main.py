@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,9 +10,15 @@ from routers import countries, links, mappoints, maps
 
 app = FastAPI()
 
+cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173").strip()
+if cors_origins_raw == "*":
+    cors_origins = ["*"]
+else:
+    cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()] or ["http://localhost:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
