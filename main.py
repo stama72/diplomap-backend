@@ -8,7 +8,7 @@ from models import User
 from auth import hash_password, verify_password, create_access_token
 import routers.countries as countries
 import routers.links as links
-import routers.mappoints as mappoints
+import routers.mapPoints as mappoints
 import routers.maps as maps
 
 app = FastAPI()
