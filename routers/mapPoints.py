@@ -10,7 +10,7 @@ from models import Map, MapPoint, Point, User
 from routers import maps, points
 from routers.points import PointIn
 
-router = APIRouter(prefix="/api", tags=["points"])
+router = APIRouter(prefix="/api", tags=["mappoints"])
 
 @router.post("/maps/{map_id}/map_points")
 def add_map_point(
